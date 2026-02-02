@@ -1,0 +1,851 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reaction Speed Test</title>
+  <style>
+    :root {
+      --bg: #f2f2f2;
+      --text: #151515;
+      --muted: #7b7b7b;
+      --idle: #e6e6e6;
+      --idle-text: #2b2b2b;
+      --waiting: #d7d7d7;
+      --fail: #d45a5a;
+      --success: #2f8f6a;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .game {
+      width: min(600px, 90vw);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+      text-align: center;
+    }
+
+    .title {
+      font-size: 18px;
+      letter-spacing: 0.2px;
+      color: var(--muted);
+    }
+
+    .round {
+      font-size: 13px;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .circle-button {
+      width: 256px;
+      height: 256px;
+      border-radius: 50%;
+      border: 1px solid #d9d9d9;
+      background: var(--idle);
+      color: var(--idle-text);
+      font-size: 30px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      transition: transform 160ms ease-out, box-shadow 160ms ease-out, background 160ms ease-out, color 160ms ease-out, border 160ms ease-out;
+    }
+
+    .circle-button.waiting {
+      background: var(--waiting);
+      color: var(--idle-text);
+      cursor: not-allowed;
+    }
+
+    .circle-button.go {
+      color: #fff;
+      border-color: transparent;
+      transform: scale(1.02);
+      box-shadow: 0 0 0 6px rgba(0, 0, 0, 0.06);
+    }
+
+    .circle-button.fail {
+      background: #f1dede;
+      color: #6b2d2d;
+      border-color: #e6c9c9;
+    }
+
+    .circle-button.success {
+      box-shadow: 0 0 0 4px rgba(47, 143, 106, 0.25);
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      letter-spacing: 0.2px;
+      min-height: 22px;
+    }
+
+    .result {
+      font-size: 22px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      min-height: 30px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .result.success {
+      color: var(--success);
+    }
+
+    .result.fail {
+      color: var(--fail);
+    }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px 20px;
+      width: 100%;
+      font-size: 16px;
+      color: var(--text);
+    }
+
+    .stats#roundStats {
+      max-width: 360px;
+      margin: 0 auto;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .stat-label {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 0.3px;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+    }
+
+    .stat-value {
+      font-size: 20px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .restart {
+      margin-top: 6px;
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: 1px solid #d4d4d4;
+      background: #fff;
+      color: var(--text);
+      cursor: pointer;
+      transition: border 160ms ease-out, transform 160ms ease-out, background 160ms ease-out;
+    }
+
+    .restart:hover {
+      border-color: #bdbdbd;
+      background: #fafafa;
+      transform: translateY(-1px);
+    }
+
+    .summary {
+      font-size: 16px;
+      color: var(--text);
+      min-height: 22px;
+    }
+
+    .instructions {
+      max-width: 420px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: var(--muted);
+      display: grid;
+      gap: 6px;
+      font-weight: 500;
+      letter-spacing: 0.2px;
+    }
+
+    .instructions-title {
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      font-size: 12px;
+      color: var(--text);
+      font-weight: 600;
+    }
+
+    .screen {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 22px;
+      text-align: center;
+    }
+
+    .mode-actions {
+      display: flex;
+      gap: 12px;
+    }
+
+    .mode-button {
+      padding: 10px 18px;
+      border-radius: 999px;
+      border: 1px solid #d4d4d4;
+      background: #fff;
+      color: var(--text);
+      cursor: pointer;
+      transition: border 160ms ease-out, transform 160ms ease-out, background 160ms ease-out;
+    }
+
+    .mode-button:hover {
+      border-color: #bdbdbd;
+      background: #fafafa;
+      transform: translateY(-1px);
+    }
+
+    .nav-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .screen.hidden {
+      display: none;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <main class="game" aria-live="polite">
+    <section class="screen" id="modeScreen">
+      <div class="title">Reaction Speed Test</div>
+      <div class="instructions">
+        <div class="instructions-title">Mode Select</div>
+        <div>Choose a mode to begin.</div>
+      </div>
+      <div class="mode-actions">
+        <button class="mode-button" id="singleModeBtn">Single Player</button>
+        <button class="mode-button" id="twoPlayerModeBtn">Two Player</button>
+      </div>
+    </section>
+
+    <section class="screen hidden" id="singleScreen">
+      <div class="title">Single Player Test</div>
+      <div class="round" id="singleRoundIndicator">Round 1 / 5</div>
+      <div class="instructions" id="singleInstructions">
+        <div class="instructions-title">Instructions</div>
+        <div>Press Space or click Start to begin.</div>
+        <div>Wait for the color signal, then react.</div>
+      </div>
+      <button class="circle-button" id="singleActionButton">Start</button>
+      <div class="hint" id="singleHint">Press Start to begin</div>
+      <div class="result" id="singleResult"></div>
+      <div class="summary" id="singleSummary"></div>
+      <div class="stats">
+        <div>
+          <div class="stat-label">Session Best</div>
+          <div class="stat-value" id="singleSessionBest">--</div>
+        </div>
+        <div>
+          <div class="stat-label">Session Average</div>
+          <div class="stat-value" id="singleSessionAvg">--</div>
+        </div>
+        <div>
+          <div class="stat-label">Your Best</div>
+          <div class="stat-value" id="singleUserBest">--</div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="restart" id="singleRestartButton">Restart</button>
+        <button class="restart" id="singleBackButton">Back</button>
+      </div>
+    </section>
+
+    <section class="screen hidden" id="twoPlayerScreen">
+      <div class="title">Two-Player Reaction Test</div>
+      <div class="round" id="roundIndicator">Round 1 / 3</div>
+      <div class="instructions" id="instructions">
+        <div class="instructions-title">Instructions</div>
+        <div>Player A uses the A key. Player B uses the L key.</div>
+        <div>Wait for the color signal, then react. The session has 3 rounds.</div>
+      </div>
+      <button class="circle-button" id="actionButton">Start</button>
+      <div class="hint" id="hint">Press Start to begin</div>
+      <div class="result" id="result"></div>
+      <div class="summary" id="summary"></div>
+      <div class="stats" id="roundStats">
+        <div>
+          <div class="stat-label">Player A</div>
+          <div class="stat-value" id="playerAResult">--</div>
+        </div>
+        <div>
+          <div class="stat-label">Player B</div>
+          <div class="stat-value" id="playerBResult">--</div>
+        </div>
+      </div>
+      <div class="stats hidden" id="finalStats">
+        <div>
+          <div class="stat-label">Player A Average</div>
+          <div class="stat-value" id="playerAAvg">--</div>
+        </div>
+        <div>
+          <div class="stat-label">Player B Average</div>
+          <div class="stat-value" id="playerBAvg">--</div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <button class="restart" id="restartButton">Restart</button>
+        <button class="restart" id="backButton">Back</button>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const COLOR_POOL = ["#3b82f6", "#1fbf6b", "#8b5cf6", "#f97316", "#14b8a6"];
+
+    const modeScreen = document.getElementById("modeScreen");
+    const singleScreen = document.getElementById("singleScreen");
+    const twoPlayerScreen = document.getElementById("twoPlayerScreen");
+    const singleModeBtn = document.getElementById("singleModeBtn");
+    const twoPlayerModeBtn = document.getElementById("twoPlayerModeBtn");
+
+    function showScreen(target) {
+      modeScreen.classList.add("hidden");
+      singleScreen.classList.add("hidden");
+      twoPlayerScreen.classList.add("hidden");
+
+      if (target === "mode") {
+        modeScreen.classList.remove("hidden");
+      }
+      if (target === "single") {
+        singleScreen.classList.remove("hidden");
+      }
+      if (target === "two") {
+        twoPlayerScreen.classList.remove("hidden");
+      }
+    }
+
+    // 单人模式状态
+    const SingleState = Object.freeze({
+      IDLE: "idle",
+      WAITING: "waiting",
+      GO: "go",
+      RESULT: "result",
+      SUMMARY: "summary"
+    });
+
+    const SINGLE_ROUNDS = 5;
+    const singleActionButton = document.getElementById("singleActionButton");
+    const singleRestartButton = document.getElementById("singleRestartButton");
+    const singleBackButton = document.getElementById("singleBackButton");
+    const singleHint = document.getElementById("singleHint");
+    const singleResult = document.getElementById("singleResult");
+    const singleSummary = document.getElementById("singleSummary");
+    const singleRoundIndicator = document.getElementById("singleRoundIndicator");
+    const singleInstructions = document.getElementById("singleInstructions");
+    const singleSessionBest = document.getElementById("singleSessionBest");
+    const singleSessionAvg = document.getElementById("singleSessionAvg");
+    const singleUserBest = document.getElementById("singleUserBest");
+
+    let singleState = SingleState.IDLE;
+    let singleWaitTimer = null;
+    let singleGoTimestamp = 0;
+    let singleRoundIndex = 0;
+    let singleCurrentColor = COLOR_POOL[0];
+    const singleAttempts = [];
+
+    const storageKeys = {
+      userId: "reaction_user_id",
+      best: "reaction_user_best"
+    };
+
+    function getOrCreateUserId() {
+      const existing = localStorage.getItem(storageKeys.userId);
+      if (existing) return existing;
+      const generated = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem(storageKeys.userId, generated);
+      return generated;
+    }
+
+    const userId = getOrCreateUserId();
+    let userBest = localStorage.getItem(storageKeys.best);
+    userBest = userBest ? Number(userBest) : null;
+
+    function updateUserBest(value) {
+      if (userBest === null || value < userBest) {
+        userBest = value;
+        localStorage.setItem(storageKeys.best, String(value));
+      }
+    }
+
+    function submitScore(payload) {
+      // 预留在线排行榜接口
+      // payload: { userId, sessionBest, sessionAverage, timestamps }
+      void payload;
+    }
+
+    function setSingleButtonState(nextState) {
+      singleActionButton.classList.remove("waiting", "go", "fail", "success");
+      singleActionButton.style.background = "";
+      singleActionButton.style.boxShadow = "";
+
+      if (nextState === SingleState.WAITING) {
+        singleActionButton.classList.add("waiting");
+      }
+      if (nextState === SingleState.GO) {
+        singleActionButton.classList.add("go");
+        singleActionButton.style.background = singleCurrentColor;
+        singleActionButton.style.boxShadow = `0 0 0 6px ${singleCurrentColor}33`;
+      }
+    }
+
+    function updateSingleRoundIndicator() {
+      singleRoundIndicator.textContent = `Round ${singleRoundIndex + 1} / ${SINGLE_ROUNDS}`;
+    }
+
+    function updateSingleStats() {
+      const sessionBest = singleAttempts.length ? Math.min(...singleAttempts) : null;
+      const sessionAvg = singleAttempts.length
+        ? singleAttempts.reduce((sum, val) => sum + val, 0) / singleAttempts.length
+        : null;
+
+      singleSessionBest.textContent = sessionBest === null ? "--" : `${sessionBest.toFixed(0)} ms`;
+      singleSessionAvg.textContent = sessionAvg === null ? "--" : `${sessionAvg.toFixed(0)} ms`;
+      singleUserBest.textContent = userBest === null ? "--" : `${userBest.toFixed(0)} ms`;
+    }
+
+    function setSingleResult(message, status) {
+      singleResult.textContent = message;
+      singleResult.classList.remove("success", "fail");
+      singleActionButton.classList.remove("success", "fail");
+      if (status) {
+        singleResult.classList.add(status);
+        singleActionButton.classList.add(status);
+      }
+    }
+
+    function setSingleState(nextState) {
+      singleState = nextState;
+      setSingleButtonState(nextState);
+
+      if (nextState === SingleState.IDLE) {
+        singleActionButton.textContent = "Start";
+        singleHint.textContent = "Press Start to begin";
+        setSingleResult("", "");
+        singleSummary.textContent = "";
+        updateSingleRoundIndicator();
+        singleInstructions.classList.remove("hidden");
+      }
+
+      if (nextState === SingleState.WAITING) {
+        singleActionButton.textContent = "Wait...";
+        singleHint.textContent = "Wait for the signal";
+        setSingleResult("", "");
+        singleInstructions.classList.add("hidden");
+      }
+
+      if (nextState === SingleState.GO) {
+        singleActionButton.textContent = "GO!";
+        singleHint.textContent = "Press Space or click now";
+        setSingleResult("", "");
+      }
+
+      if (nextState === SingleState.RESULT) {
+        singleHint.textContent = "Get ready for the next round";
+      }
+
+      if (nextState === SingleState.SUMMARY) {
+        singleHint.textContent = "Session complete";
+      }
+    }
+
+    function startSingleWaiting() {
+      clearTimeout(singleWaitTimer);
+      setSingleState(SingleState.WAITING);
+      const delay = 800 + Math.random() * (3500 - 800);
+      singleWaitTimer = setTimeout(() => {
+        singleGoTimestamp = performance.now();
+        singleCurrentColor = COLOR_POOL[Math.floor(Math.random() * COLOR_POOL.length)];
+        setSingleState(SingleState.GO);
+      }, delay);
+    }
+
+    function startSingleSession() {
+      clearTimeout(singleWaitTimer);
+      singleRoundIndex = 0;
+      singleAttempts.length = 0;
+      singleSummary.textContent = "";
+      updateSingleStats();
+      updateSingleRoundIndicator();
+      startSingleWaiting();
+    }
+
+    function handleSingleAction() {
+      if (singleState === SingleState.IDLE) {
+        startSingleSession();
+        return;
+      }
+
+      if (singleState === SingleState.WAITING) {
+        clearTimeout(singleWaitTimer);
+        setSingleResult("Too early!", "fail");
+        setSingleState(SingleState.SUMMARY);
+        singleSummary.textContent = "Session ended due to early click";
+        return;
+      }
+
+      if (singleState === SingleState.GO) {
+        const reaction = performance.now() - singleGoTimestamp;
+        singleAttempts.push(reaction);
+        updateUserBest(reaction);
+        updateSingleStats();
+        setSingleResult(`Reaction Time: ${reaction.toFixed(0)} ms`, "success");
+
+        if (singleRoundIndex < SINGLE_ROUNDS - 1) {
+          singleRoundIndex += 1;
+          updateSingleRoundIndicator();
+          setSingleState(SingleState.RESULT);
+          setTimeout(() => startSingleWaiting(), 600);
+        } else {
+          const sessionBest = Math.min(...singleAttempts);
+          const sessionAvg = singleAttempts.reduce((sum, val) => sum + val, 0) / singleAttempts.length;
+          setSingleState(SingleState.SUMMARY);
+          singleSummary.textContent = `Session Average: ${sessionAvg.toFixed(0)} ms · Session Best: ${sessionBest.toFixed(0)} ms`;
+          submitScore({
+            userId,
+            sessionBest,
+            sessionAverage: sessionAvg,
+            timestamps: singleAttempts.slice()
+          });
+        }
+      }
+    }
+
+    function restartSingle() {
+      clearTimeout(singleWaitTimer);
+      singleRoundIndex = 0;
+      singleAttempts.length = 0;
+      updateSingleStats();
+      setSingleState(SingleState.IDLE);
+    }
+
+    function stopSingleSession() {
+      clearTimeout(singleWaitTimer);
+      setSingleState(SingleState.IDLE);
+    }
+
+    // 双人模式状态
+    const TwoPlayerState = Object.freeze({
+      IDLE: "idle",
+      WAITING: "waiting",
+      GO: "go",
+      ROUND_RESULT: "round_result",
+      FINAL_RESULT: "final_result"
+    });
+
+    const TOTAL_ROUNDS = 3;
+    const actionButton = document.getElementById("actionButton");
+    const restartButton = document.getElementById("restartButton");
+    const backButton = document.getElementById("backButton");
+    const hint = document.getElementById("hint");
+    const result = document.getElementById("result");
+    const summary = document.getElementById("summary");
+    const roundIndicator = document.getElementById("roundIndicator");
+    const instructions = document.getElementById("instructions");
+    const playerAResult = document.getElementById("playerAResult");
+    const playerBResult = document.getElementById("playerBResult");
+    const playerAAvg = document.getElementById("playerAAvg");
+    const playerBAvg = document.getElementById("playerBAvg");
+    const finalStats = document.getElementById("finalStats");
+
+    let state = TwoPlayerState.IDLE;
+    let waitTimer = null;
+    let goTimestamp = 0;
+    let roundIndex = 0;
+    let currentColor = COLOR_POOL[0];
+    let playerAHasResult = false;
+    let playerBHasResult = false;
+    const playerAResults = [];
+    const playerBResults = [];
+
+    function setButtonState(nextState) {
+      actionButton.classList.remove("waiting", "go", "fail", "success");
+      actionButton.style.background = "";
+      actionButton.style.boxShadow = "";
+
+      if (nextState === TwoPlayerState.WAITING) {
+        actionButton.classList.add("waiting");
+      }
+      if (nextState === TwoPlayerState.GO) {
+        actionButton.classList.add("go");
+        actionButton.style.background = currentColor;
+        actionButton.style.boxShadow = `0 0 0 6px ${currentColor}33`;
+      }
+    }
+
+    function updateRoundIndicator() {
+      roundIndicator.textContent = `Round ${roundIndex + 1} / ${TOTAL_ROUNDS}`;
+    }
+
+    function formatResult(entry) {
+      if (!entry) return "--";
+      if (entry.early) return "Too early";
+      return `${entry.time.toFixed(0)} ms`;
+    }
+
+    function setResult(message, status) {
+      result.textContent = message;
+      result.classList.remove("success", "fail");
+      actionButton.classList.remove("success", "fail");
+      if (status) {
+        result.classList.add(status);
+        actionButton.classList.add(status);
+      }
+    }
+
+    function updateRoundResults() {
+      playerAResult.textContent = formatResult(playerAResults[roundIndex]);
+      playerBResult.textContent = formatResult(playerBResults[roundIndex]);
+    }
+
+    function updateFinalStats() {
+      const average = (values) => {
+        const valid = values.filter((entry) => entry && !entry.early && typeof entry.time === "number");
+        if (!valid.length) return null;
+        const sum = valid.reduce((total, entry) => total + entry.time, 0);
+        return sum / valid.length;
+      };
+
+      const avgA = average(playerAResults);
+      const avgB = average(playerBResults);
+
+      playerAAvg.textContent = avgA === null ? "--" : `${avgA.toFixed(0)} ms`;
+      playerBAvg.textContent = avgB === null ? "--" : `${avgB.toFixed(0)} ms`;
+
+      if (avgA !== null && avgB !== null) {
+        if (avgA < avgB) {
+          summary.textContent = "Overall faster: Player A";
+        } else if (avgB < avgA) {
+          summary.textContent = "Overall faster: Player B";
+        } else {
+          summary.textContent = "Overall result: Tie";
+        }
+      } else {
+        summary.textContent = "Overall result: Insufficient data";
+      }
+    }
+
+    function setState(nextState) {
+      state = nextState;
+      setButtonState(nextState);
+
+      if (nextState === TwoPlayerState.IDLE) {
+        actionButton.textContent = "Start";
+        hint.textContent = "Press Start to begin";
+        setResult("", "");
+        summary.textContent = "";
+        updateRoundIndicator();
+        updateRoundResults();
+        finalStats.classList.add("hidden");
+        instructions.classList.remove("hidden");
+      }
+
+      if (nextState === TwoPlayerState.WAITING) {
+        actionButton.textContent = "Wait...";
+        hint.textContent = "Wait for the signal";
+        setResult("", "");
+        instructions.classList.add("hidden");
+      }
+
+      if (nextState === TwoPlayerState.GO) {
+        actionButton.textContent = "GO!";
+        hint.textContent = "Press A or L now";
+        setResult("", "");
+      }
+
+      if (nextState === TwoPlayerState.ROUND_RESULT) {
+        hint.textContent = "Round complete";
+      }
+
+      if (nextState === TwoPlayerState.FINAL_RESULT) {
+        hint.textContent = "Session complete";
+        finalStats.classList.remove("hidden");
+      }
+    }
+
+    function resetRoundTracking() {
+      playerAHasResult = false;
+      playerBHasResult = false;
+      playerAResults[roundIndex] = null;
+      playerBResults[roundIndex] = null;
+      updateRoundResults();
+    }
+
+    function startWaiting() {
+      clearTimeout(waitTimer);
+      resetRoundTracking();
+      setState(TwoPlayerState.WAITING);
+      const delay = 800 + Math.random() * (3500 - 800);
+      waitTimer = setTimeout(() => {
+        goTimestamp = performance.now();
+        currentColor = COLOR_POOL[Math.floor(Math.random() * COLOR_POOL.length)];
+        setState(TwoPlayerState.GO);
+      }, delay);
+    }
+
+    function startSession() {
+      clearTimeout(waitTimer);
+      roundIndex = 0;
+      playerAResults.length = 0;
+      playerBResults.length = 0;
+      summary.textContent = "";
+      updateRoundIndicator();
+      resetRoundTracking();
+      startWaiting();
+    }
+
+    function finishRound() {
+      updateRoundResults();
+      if (roundIndex < TOTAL_ROUNDS - 1) {
+        roundIndex += 1;
+        updateRoundIndicator();
+        setState(TwoPlayerState.ROUND_RESULT);
+        setTimeout(() => startWaiting(), 600);
+      } else {
+        setState(TwoPlayerState.FINAL_RESULT);
+        updateFinalStats();
+      }
+    }
+
+    function registerEarly(player) {
+      if (state !== TwoPlayerState.WAITING) return;
+      clearTimeout(waitTimer);
+      if (player === "A" && !playerAHasResult) {
+        playerAHasResult = true;
+        playerAResults[roundIndex] = { time: null, early: true };
+      }
+      if (player === "B" && !playerBHasResult) {
+        playerBHasResult = true;
+        playerBResults[roundIndex] = { time: null, early: true };
+      }
+      setResult(`Too early! Player ${player}`, "fail");
+      finishRound();
+    }
+
+    function registerReaction(player) {
+      if (state !== TwoPlayerState.GO) return;
+      const reaction = performance.now() - goTimestamp;
+      if (player === "A" && !playerAHasResult) {
+        playerAHasResult = true;
+        playerAResults[roundIndex] = { time: reaction, early: false };
+      }
+      if (player === "B" && !playerBHasResult) {
+        playerBHasResult = true;
+        playerBResults[roundIndex] = { time: reaction, early: false };
+      }
+      updateRoundResults();
+      if (playerAHasResult && playerBHasResult) {
+        setResult("Round recorded", "success");
+        finishRound();
+      }
+    }
+
+    function restart() {
+      clearTimeout(waitTimer);
+      roundIndex = 0;
+      playerAResults.length = 0;
+      playerBResults.length = 0;
+      setState(TwoPlayerState.IDLE);
+    }
+
+    function stopTwoPlayerSession() {
+      clearTimeout(waitTimer);
+      setState(TwoPlayerState.IDLE);
+    }
+
+    singleModeBtn.addEventListener("click", () => {
+      showScreen("single");
+      restartSingle();
+    });
+
+    twoPlayerModeBtn.addEventListener("click", () => {
+      showScreen("two");
+      restart();
+    });
+
+    singleActionButton.addEventListener("click", handleSingleAction);
+    singleRestartButton.addEventListener("click", restartSingle);
+    singleBackButton.addEventListener("click", () => {
+      stopSingleSession();
+      showScreen("mode");
+    });
+
+    actionButton.addEventListener("click", () => {
+      if (state === TwoPlayerState.IDLE || state === TwoPlayerState.FINAL_RESULT) {
+        startSession();
+      }
+    });
+    restartButton.addEventListener("click", restart);
+    backButton.addEventListener("click", () => {
+      stopTwoPlayerSession();
+      showScreen("mode");
+    });
+
+    window.addEventListener("keydown", (event) => {
+      if (event.repeat) return;
+      const key = event.key.toLowerCase();
+
+      if (!singleScreen.classList.contains("hidden")) {
+        if (key === " ") {
+          event.preventDefault();
+          handleSingleAction();
+        }
+      }
+
+      if (!twoPlayerScreen.classList.contains("hidden")) {
+        if (key === "a") {
+          event.preventDefault();
+          if (state === TwoPlayerState.IDLE) {
+            startSession();
+          } else if (state === TwoPlayerState.WAITING) {
+            registerEarly("A");
+          } else if (state === TwoPlayerState.GO) {
+            registerReaction("A");
+          }
+        }
+        if (key === "l") {
+          event.preventDefault();
+          if (state === TwoPlayerState.IDLE) {
+            startSession();
+          } else if (state === TwoPlayerState.WAITING) {
+            registerEarly("B");
+          } else if (state === TwoPlayerState.GO) {
+            registerReaction("B");
+          }
+        }
+      }
+    });
+
+    showScreen("mode");
+    updateSingleRoundIndicator();
+    updateSingleStats();
+    updateRoundIndicator();
+    updateRoundResults();
+  </script>
+</body>
+</html>
